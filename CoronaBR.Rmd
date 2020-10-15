@@ -15,6 +15,15 @@ output:
 runtime: shiny
 favicon: Logo.png
 ---
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-164763641-2"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-164763641-2');
+</script>
 
 
 ```{r setup, include=FALSE}
@@ -42,12 +51,21 @@ t0 <- readRDS(file = "./time0.rds")
 # Pegando hora atual de acordo com horário de São Paulo:
 t1 <- as_datetime(Sys.time(), tz = "America/Sao_Paulo")
 
+# if (duration(int_length(interval(t0, t1))) >= duration(43200)) {
+# # Baixando os dados de 12 em 12 horas de acordo com acessos a aplicação:
+# download.file(url = "https://brasil.io/dataset/covid19/caso?format=csv", destfile = "./covid19.csv")
+#   t0 <- t1
+#   saveRDS(t1, file = "./time0.rds")
+# }
+
 if (duration(int_length(interval(t0, t1))) >= duration(43200)) {
- # Baixando os dados de 12 em 12 horas de acordo com acessos a aplicação:
-  download.file(url = "https://brasil.io/dataset/covid19/caso?format=csv", destfile = "./covid19.csv")
+# Baixando os dados de 12 em 12 horas de acordo com acessos a aplicação:
+download.file(url = "https://data.brasil.io/dataset/covid19/caso.csv.gz", destfile = "./covid19.csv.gz")
   t0 <- t1
   saveRDS(t1, file = "./time0.rds")
 }
+library(R.utils)
+gunzip("covid19.csv.gz", remove=FALSE, overwrite=TRUE)
 
 #download.file(url = "https://brasil.io/dataset/covid19/caso?format=csv", destfile = "./covid19.csv")
 
@@ -59,10 +77,30 @@ if (duration(int_length(interval(t0, t1))) >= duration(43200)) {
 # data <- data.frame(json_data$results)
 
 data <- fread("covid19.csv", encoding = "UTF-8")
+# names(data) <- c("city",
+# "city_ibge_code",                               
+# "date",                                         
+# "epidemiological_week",                         
+# "estimated_population_2019",                    
+# "is_last",                                      
+# "is_repeated",                                  
+# "confirmed",                     
+# "confirmed_per_100k_inhabitants",
+# "last_available_date",                          
+# "death_rate",                    
+# "deaths",                        
+# "order_for_place",                              
+# "place_type",                                   
+# "state",                                        
+# "new_confirmed",                                
+# "new_deaths")
+#names(data)
 data$deaths[is.na(data$deaths)] <- 0
 data$date <- as.Date(data$date)
 data <- data[order(data$date) , ]
 data$deaths_100k_inhabitants <- ((data$deaths)/(data$estimated_population_2019))*100000
+
+
 
 data <- data %>%
   dplyr::filter(place_type == "state") %>%
@@ -73,7 +111,7 @@ names(data) <- c("date", "state", "confirmed", "deaths", "Pop", "quant_confirmed
 aggSetor <-data%>%filter(date==(last(data$date)-1))%>%group_by(state) %>% 
   summarise(quantidade = sum(deaths), confirmedM = mean(confirmed))
 aggSetor$escala <- scale(aggSetor$confirmedM)
-
+includeHTML(("google_analytics.html"))
 ```
 
 
@@ -432,6 +470,24 @@ plotly::plotlyOutput("dailyMetrics")
 f1 = list(family="Courier New, monospace", size=12, color="rgb(30,30,30)")
 
 tabela <- fread("covid19.csv", encoding = "UTF-8")
+# tabela <- fread("caso_full.csv", encoding = "UTF-8")
+# names(tabela) <- c("city",
+# "city_ibge_code",                               
+# "date",                                         
+# "epidemiological_week",                         
+# "estimated_population_2019",                    
+# "is_last",                                      
+# "is_repeated",                                  
+# "confirmed",                     
+# "confirmed_per_100k_inhabitants",
+# "last_available_date",                          
+# "death_rate",                    
+# "deaths",                        
+# "order_for_place",                              
+# "place_type",                                   
+# "state",                                        
+# "new_confirmed",                                
+# "new_deaths")
 #tabela$city <- dplyr::if_else(tabela$city=="","<all>",tabela$city)
 tabela <- tabela %>%  dplyr::filter(place_type == "city") 
 tabela <- tabela %>% select(state, city, date, confirmed, deaths)
